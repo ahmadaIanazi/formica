@@ -64,11 +64,11 @@ export default function BrandingPage() {
       <div className='max-w-3xl mx-auto'>
         <Card>
           <CardHeader>
-            <CardTitle>Create Your Brand Identity</CardTitle>
+            <CardTitle>Request Your Brand Identity</CardTitle>
             <div className='flex justify-between mt-4'>
               {steps.map((stepTitle, index) => (
                 <div key={stepTitle} className={`text-sm ${step === index + 1 ? "text-primary font-medium" : "text-muted-foreground"}`}>
-                  {stepTitle}
+                  {index + 1}
                 </div>
               ))}
             </div>
