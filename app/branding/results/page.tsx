@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getCookie, deleteCookie } from "cookies-next";
-import html2pdf from "html2pdf.js";
-import domtoimage from "dom-to-image-improved";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandingFormData } from "@/types/branding";
@@ -11,6 +9,7 @@ import { BrandingFormData } from "@/types/branding";
 export default function ResultsPage() {
   const [formData, setFormData] = useState<BrandingFormData | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     const data = getCookie("brandingData");
@@ -21,26 +20,40 @@ export default function ResultsPage() {
 
   const exportAsPDF = async () => {
     if (!resultRef.current) return;
-    const element = resultRef.current;
-    const opt = {
-      margin: 1,
-      filename: "branding-results.pdf",
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-    };
-    await html2pdf().set(opt).from(element).save();
-    deleteCookie("brandingData");
+    setIsGenerating(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const element = resultRef.current;
+      const opt = {
+        margin: 1,
+        filename: "branding-results.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+      };
+      await html2pdf().set(opt).from(element).save();
+      deleteCookie("brandingData");
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+    }
+    setIsGenerating(false);
   };
 
   const exportAsImage = async () => {
     if (!resultRef.current) return;
-    const dataUrl = await domtoimage.toPng(resultRef.current);
-    const link = document.createElement("a");
-    link.download = "branding-results.png";
-    link.href = dataUrl;
-    link.click();
-    deleteCookie("brandingData");
+    setIsGenerating(true);
+    try {
+      const domtoimage = (await import("dom-to-image-improved")).default;
+      const dataUrl = await domtoimage.toPng(resultRef.current);
+      const link = document.createElement("a");
+      link.download = "branding-results.png";
+      link.href = dataUrl;
+      link.click();
+      deleteCookie("brandingData");
+    } catch (error) {
+      console.error("Failed to generate image:", error);
+    }
+    setIsGenerating(false);
   };
 
   if (!formData) {
@@ -123,9 +136,11 @@ export default function ResultsPage() {
           </div>
 
           <div className='flex gap-4 justify-center'>
-            <Button onClick={exportAsPDF}>Download PDF</Button>
-            <Button variant='outline' onClick={exportAsImage}>
-              Download Image
+            <Button onClick={exportAsPDF} disabled={isGenerating}>
+              {isGenerating ? "Generating..." : "Download PDF"}
+            </Button>
+            <Button variant='outline' onClick={exportAsImage} disabled={isGenerating}>
+              {isGenerating ? "Generating..." : "Download Image"}
             </Button>
           </div>
         </div>
