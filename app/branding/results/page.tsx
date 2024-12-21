@@ -5,17 +5,22 @@ import { getCookie, deleteCookie } from "cookies-next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandingFormData } from "@/types/branding";
+import { Share2 } from "lucide-react";
 
 export default function ResultsPage() {
   const [formData, setFormData] = useState<BrandingFormData | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
     const data = getCookie("brandingData");
     if (data) {
       setFormData(JSON.parse(data as string));
     }
+    // Check if Web Share API is available
+    setCanShare(!!navigator.share);
   }, []);
 
   const exportAsPDF = async () => {
@@ -54,6 +59,34 @@ export default function ResultsPage() {
       console.error("Failed to generate image:", error);
     }
     setIsGenerating(false);
+  };
+
+  const shareResult = async () => {
+    if (!resultRef.current) return;
+    setIsSharing(true);
+    try {
+      const domtoimage = (await import("dom-to-image-improved")).default;
+      const dataUrl = await domtoimage.toPng(resultRef.current);
+
+      // Convert data URL to Blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+
+      // Create file from blob
+      const file = new File([blob], "branding-results.png", { type: "image/png" });
+
+      // Share data
+      await navigator.share({
+        title: "My Brand Identity",
+        text: "Check out my brand identity design!",
+        files: [file],
+      });
+    } catch (error) {
+      console.error("Failed to share:", error);
+      // Fallback to regular image download if sharing fails
+      await exportAsImage();
+    }
+    setIsSharing(false);
   };
 
   if (!formData) {
@@ -135,13 +168,19 @@ export default function ResultsPage() {
             </Card>
           </div>
 
-          <div className='flex gap-4 justify-center'>
-            <Button onClick={exportAsPDF} disabled={isGenerating}>
+          <div className='flex gap-4 justify-center flex-wrap'>
+            <Button onClick={exportAsPDF} disabled={isGenerating || isSharing}>
               {isGenerating ? "Generating..." : "Download PDF"}
             </Button>
-            <Button variant='outline' onClick={exportAsImage} disabled={isGenerating}>
+            <Button variant='outline' onClick={exportAsImage} disabled={isGenerating || isSharing}>
               {isGenerating ? "Generating..." : "Download Image"}
             </Button>
+            {canShare && (
+              <Button variant='outline' onClick={shareResult} disabled={isGenerating || isSharing} className='gap-2'>
+                <Share2 className='w-4 h-4' />
+                {isSharing ? "Sharing..." : "Share"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
